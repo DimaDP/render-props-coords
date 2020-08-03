@@ -1,7 +1,9 @@
 import React from 'react';
 import { connect, ConnectedProps } from 'react-redux';
 
-import { RootState, isLoading, startLoading } from '../store';
+import {
+  RootState, isLoading, startLoading, setTodos,
+} from '../store';
 
 /**
  * mapState - is a function receiving full Redux state as the first argument
@@ -25,6 +27,7 @@ const mapState = (state: RootState) => {
  */
 const mapDispatch = {
   load: startLoading,
+  todosLoaded: setTodos,
 };
 
 /**
@@ -41,11 +44,22 @@ type Props = ConnectedProps<typeof connector> & {
   title: string; // a regular prop passed like <Start title="Start loading" />
 };
 
-const Start: React.FC<Props> = ({ load, loading, title }) => {
+const Start: React.FC<Props> = ({
+  load, title, loading, todosLoaded,
+}) => {
+  const handleClick = async () => {
+    load();
+
+    const response = await fetch('https://mate.academy/students-api/todos');
+    const { data } = await response.json();
+
+    todosLoaded(data);
+  };
+
   return (
     <button
       type="button"
-      onClick={load}
+      onClick={handleClick}
       disabled={loading}
     >
       {title}

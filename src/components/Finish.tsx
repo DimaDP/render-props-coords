@@ -1,28 +1,66 @@
-import React from 'react';
-import { useSelector, useDispatch } from 'react-redux';
+import React, {
+  useContext, useEffect, useState, useCallback,
+} from 'react';
 
-import { isLoading, finishLoading } from '../store';
+import { AnyAction } from 'redux';
+import {
+  isLoading, finishLoading, RootState, startLoading,
+} from '../store';
+import { ReduxContext } from '../ReduxContex';
 
 type Props = {
   title: string;
   message: string;
 };
 
-export const Finish: React.FC<Props> = ({ title, message }) => {
-  const dispatch = useDispatch(); // it is a link to `store.dispatch` method
-  const loading = useSelector(isLoading); // we pass a link to selector function here
+const useSelector = (selector: (state: RootState) => any) => {
+  const store = useContext(ReduxContext);
+  const [stateSlice, setStateSlice] = useState();
 
-  const handleClick = () => {
-    // action creator returns an action object
-    // { type: 'FINISH_LOADING', message: 'the value of a message prop' }
-    const action = finishLoading(message);
+  useEffect(() => {
+    const unsubscribe = store.subscribe(() => {
+      const state = store.getState();
 
-    // we dispatch an action to Redux
-    dispatch(action);
+      setStateSlice(selector(state));
+    });
 
-    // it could be shortened to
-    // dispatch(finishLoading(message));
+    return () => unsubscribe();
+  }, [store, setStateSlice]);
+
+  return stateSlice;
+};
+
+const useAction = (actionCreator: (...args: any[]) => AnyAction) => {
+  const store = useContext(ReduxContext);
+
+  return (...args: any[]) => {
+    const action = actionCreator(...args);
+
+    store.dispatch(action);
   };
+};
+
+const useLoading = (): [boolean, { startLoading: Function; finishLoading: Function }] => {
+  const loading = useSelector(isLoading) as any as boolean;
+  const dispatchStartLoading = useAction(startLoading);
+  const dispatchFinishLoading = useAction(finishLoading);
+
+  return [
+    loading,
+    {
+      startLoading: dispatchStartLoading,
+      finishLoading: dispatchFinishLoading,
+    },
+  ];
+};
+
+export const Finish: React.FC<Props> = ({ title, message }) => {
+  const [loading, actions] = useLoading();
+
+  const handleClick = useCallback(
+    () => actions.finishLoading(message),
+    [actions.finishLoading, message],
+  );
 
   return (
     <button
